@@ -81,8 +81,5 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("io.coil-kt:coil-video:2.6.0")
 
-    // Guava is pulled in by Media3; we use ImmutableList for overlay lists.
-    implementation("com.google.guava:guava:33.2.1-android")
-
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

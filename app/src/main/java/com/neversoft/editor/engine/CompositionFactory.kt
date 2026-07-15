@@ -7,7 +7,6 @@ import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
 import androidx.media3.common.C
 import androidx.media3.common.Effect
-import androidx.media3.common.Effects
 import androidx.media3.common.MediaItem
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.ChannelMixingAudioProcessor
@@ -23,7 +22,7 @@ import androidx.media3.effect.TextureOverlay
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.EditedMediaItemSequence
-import com.google.common.collect.ImmutableList
+import androidx.media3.transformer.Effects
 import com.neversoft.editor.model.Clip
 import com.neversoft.editor.model.MediaType
 import com.neversoft.editor.model.Project
@@ -40,8 +39,8 @@ import com.neversoft.editor.model.TextPosition
 object CompositionFactory {
 
     fun build(project: Project): Composition {
-        val videoItems = project.clips.map { editedItem(it, project) }.toTypedArray()
-        val videoSequence = EditedMediaItemSequence.Builder(*videoItems).build()
+        val videoItems = project.clips.map { editedItem(it, project) }
+        val videoSequence = EditedMediaItemSequence.Builder(videoItems).build()
 
         val sequences = mutableListOf(videoSequence)
         project.music?.let { music ->
@@ -59,7 +58,7 @@ object CompositionFactory {
             sequences.add(EditedMediaItemSequence.Builder(item).build())
         }
 
-        return Composition.Builder(*sequences.toTypedArray())
+        return Composition.Builder(sequences)
             // Images and muted clips have no audio track — force a silent one so
             // clips concatenate cleanly instead of failing on a track mismatch.
             .experimentalSetForceAudioTrack(true)
@@ -119,9 +118,7 @@ object CompositionFactory {
         )
 
         if (clip.texts.isNotEmpty()) {
-            val overlays: ImmutableList<TextureOverlay> = ImmutableList.copyOf(
-                clip.texts.map { textOverlay(it) }
-            )
+            val overlays: List<TextureOverlay> = clip.texts.map { textOverlay(it) }
             effects.add(OverlayEffect(overlays))
         }
         return effects
