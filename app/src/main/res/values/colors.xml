@@ -1,0 +1,7 @@
+<resources>
+    <color name="ns_bg">#0B0B10</color>
+    <color name="ns_violet">#7C4DFF</color>
+    <color name="ns_magenta">#FF3D9A</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+</resources>
