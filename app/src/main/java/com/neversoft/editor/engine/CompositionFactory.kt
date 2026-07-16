@@ -30,10 +30,10 @@ import com.neversoft.editor.model.TextClip
 import com.neversoft.editor.model.TextPosition
 
 /**
- * Builds a Media3 [Composition] from a [Project]. The exact same composition is
- * used for the on-device preview ([androidx.media3.transformer.CompositionPlayer])
- * and for the final export ([androidx.media3.transformer.Transformer]) — so what
- * you see is precisely what you get.
+ * Builds a Media3 [Composition] from a [Project] for the final export via
+ * [androidx.media3.transformer.Transformer]. This is where filters, captions,
+ * speed and background music are rendered into the output file. (Live preview
+ * uses a plain ExoPlayer on the raw clips for maximum playback reliability.)
  */
 @UnstableApi
 object CompositionFactory {

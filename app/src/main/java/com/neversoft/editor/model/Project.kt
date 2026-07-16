@@ -43,6 +43,8 @@ data class Clip(
     val uri: Uri,
     val type: MediaType,
     val sourceDurationMs: Long,           // full length of the source (video only)
+    val sourceWidth: Int = 0,             // pixel dimensions of the source
+    val sourceHeight: Int = 0,
     val trimStartMs: Long = 0,            // video trim in
     val trimEndMs: Long = sourceDurationMs, // video trim out
     val imageDurationMs: Long = 3000,     // how long a photo stays on screen

@@ -29,18 +29,23 @@ export, and only for what you actually keep.
 - **Export** to MP4 and save straight to the gallery (Movies › NeverSoft), with
   a live progress readout.
 
-WYSIWYG: the on-device preview and the exported file are built from the *same*
-Media3 `Composition`, so what you see is exactly what you get.
+Preview plays the raw clips (with trim and photo duration applied) on a
+standard, battle-tested `ExoPlayer` — so photos and videos of any size/length
+play reliably. The polished looks — filters, captions and speed — are rendered
+into the file by `Transformer` on export.
 
 ## How it's built
 
 | Layer | Choice |
 | --- | --- |
 | UI | Jetpack Compose (Material 3), single dark theme |
-| Preview | `androidx.media3.transformer.CompositionPlayer` |
+| Preview | `androidx.media3.exoplayer.ExoPlayer` (images + video, any size) |
 | Render | `androidx.media3.transformer.Transformer` |
 | Effects | `androidx.media3.effect` (filters, speed, text/overlay, presentation) |
 | Thumbnails | Coil + `VideoFrameDecoder` (no file copy) |
+
+Metadata is probed off the main thread, so importing a long/large video never
+blocks the UI.
 
 Key files:
 

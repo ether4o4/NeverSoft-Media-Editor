@@ -76,6 +76,8 @@ object MediaUtils {
             uri = uri,
             type = p.type,
             sourceDurationMs = p.durationMs,
+            sourceWidth = p.width,
+            sourceHeight = p.height,
             trimStartMs = 0,
             trimEndMs = p.durationMs,
         )

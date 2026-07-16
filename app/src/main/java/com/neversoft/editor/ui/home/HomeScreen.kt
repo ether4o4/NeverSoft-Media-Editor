@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,6 +61,7 @@ fun HomeScreen(vm: EditorViewModel) {
 
     val brand = Brush.linearGradient(listOf(Violet, Magenta))
 
+    Box(Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -137,6 +140,20 @@ fun HomeScreen(vm: EditorViewModel) {
             "Private by design",
             "No sign-in, no cloud. Your footage never leaves the device.",
         )
+    }
+
+        if (vm.importing) {
+            Box(
+                Modifier.fillMaxSize().background(Color(0xE60B0B10)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = Magenta)
+                    Spacer(Modifier.height(14.dp))
+                    Text("Adding your media…", color = Color.White)
+                }
+            }
+        }
     }
 }
 
