@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,7 +21,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,7 +47,7 @@ import com.neversoft.editor.ui.theme.Violet
 
 @UnstableApi
 @Composable
-fun HomeScreen(vm: EditorViewModel) {
+fun HomeScreen(vm: EditorViewModel, onOpenMusic: () -> Unit) {
     val context = LocalContext.current
 
     val picker = rememberLauncherForActivityResult(
@@ -59,6 +62,7 @@ fun HomeScreen(vm: EditorViewModel) {
 
     val brand = Brush.linearGradient(listOf(Violet, Magenta))
 
+    Box(Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -120,7 +124,31 @@ fun HomeScreen(vm: EditorViewModel) {
             textAlign = TextAlign.Center,
         )
 
-        Spacer(Modifier.height(44.dp))
+        Spacer(Modifier.height(16.dp))
+        // Secondary entry: the Music Studio.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(Surface1)
+                .clickable { onOpenMusic() },
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Filled.MusicNote, contentDescription = null, tint = Magenta)
+            Spacer(Modifier.width(10.dp))
+            Text("Music Studio", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Crop a song, set its volume & speed, and re-tag it.",
+            color = OnDim,
+            fontSize = 13.sp,
+            textAlign = TextAlign.Center,
+        )
+
+        Spacer(Modifier.height(40.dp))
 
         Feature(
             Icons.Filled.Bolt,
@@ -137,6 +165,20 @@ fun HomeScreen(vm: EditorViewModel) {
             "Private by design",
             "No sign-in, no cloud. Your footage never leaves the device.",
         )
+    }
+
+        if (vm.importing) {
+            Box(
+                Modifier.fillMaxSize().background(Color(0xE60B0B10)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = Magenta)
+                    Spacer(Modifier.height(14.dp))
+                    Text("Adding your media…", color = Color.White)
+                }
+            }
+        }
     }
 }
 

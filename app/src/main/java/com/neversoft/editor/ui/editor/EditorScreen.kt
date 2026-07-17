@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -43,14 +44,18 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.transformer.CompositionPlayer
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-import com.neversoft.editor.engine.CompositionFactory
+import com.neversoft.editor.model.Clip
+import com.neversoft.editor.model.MediaType
 import com.neversoft.editor.ui.EditorViewModel
 import com.neversoft.editor.ui.ExportState
 import com.neversoft.editor.ui.theme.Bg
@@ -73,40 +78,58 @@ fun EditorScreen(vm: EditorViewModel) {
             setBackgroundColor(android.graphics.Color.BLACK)
         }
     }
-    var player by remember { mutableStateOf<CompositionPlayer?>(null) }
+    // A plain ExoPlayer previews the raw clips (trim + photo duration honoured).
+    // It plays videos of any size/length and still images alike; the polished
+    // effects (filters, captions, speed) are applied by Transformer on export.
+    var player by remember { mutableStateOf<ExoPlayer?>(null) }
     var playheadMs by remember { mutableStateOf(0L) }
     var isPlaying by remember { mutableStateOf(false) }
     var durationMs by remember { mutableStateOf(0L) }
+    var previewNote by remember { mutableStateOf<String?>(null) }
 
     val addMore = rememberLauncherForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia()
     ) { uris -> vm.addMore(context, uris) }
 
-    // Rebuild the preview composition after edits settle (debounced so dragging
-    // a slider doesn't thrash the player).
+    // (Re)build the playlist after edits settle (debounced so dragging a trim
+    // handle doesn't thrash the player).
     LaunchedEffect(vm.previewVersion) {
-        delay(260)
-        player?.release()
-        isPlaying = false
-        playheadMs = 0
+        delay(180)
+        previewNote = null
+        val exo = player ?: ExoPlayer.Builder(context).build().also { p ->
+            p.addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(state: Int) {
+                    if (state == Player.STATE_ENDED) isPlaying = false
+                }
+                override fun onPlayerError(error: PlaybackException) {
+                    // Never crash on a stubborn clip — tell the user it will
+                    // still export and keep the editor alive.
+                    previewNote = "This clip can't preview, but it will still export."
+                    isPlaying = false
+                }
+            })
+            playerView.player = p
+            player = p
+        }
+        val clips = vm.project.clips
         durationMs = vm.project.totalDurationMs
-        if (vm.project.isEmpty) { player = null; return@LaunchedEffect }
-        val p = CompositionPlayer.Builder(context).build()
-        p.addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(state: Int) {
-                if (state == Player.STATE_ENDED) isPlaying = false
-            }
-        })
-        p.setComposition(CompositionFactory.build(vm.project))
-        p.prepare()
-        playerView.player = p
-        player = p
+        playheadMs = 0
+        isPlaying = false
+        if (clips.isEmpty()) return@LaunchedEffect
+        try {
+            exo.setMediaItems(clips.map { previewMediaItem(it) })
+            exo.prepare()
+        } catch (e: Exception) {
+            previewNote = "Preview unavailable — export still works."
+        }
     }
 
-    // Advance the playhead readout while playing.
+    // Advance the playhead readout (in timeline time) while playing.
     LaunchedEffect(isPlaying) {
         while (isPlaying) {
-            player?.let { playheadMs = it.currentPosition }
+            player?.let {
+                playheadMs = timelinePosition(vm.project.clips, it.currentMediaItemIndex, it.currentPosition)
+            }
             delay(60)
         }
     }
@@ -120,7 +143,7 @@ fun EditorScreen(vm: EditorViewModel) {
         if (isPlaying) {
             p.pause(); isPlaying = false
         } else {
-            if (p.playbackState == Player.STATE_ENDED) p.seekTo(0)
+            if (p.playbackState == Player.STATE_ENDED) p.seekTo(0, 0)
             p.play(); isPlaying = true
         }
     }
@@ -142,6 +165,14 @@ fun EditorScreen(vm: EditorViewModel) {
                 },
             )
 
+            if (vm.importing) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Magenta,
+                    trackColor = Surface1,
+                )
+            }
+
             // Preview
             Box(
                 modifier = Modifier
@@ -154,7 +185,6 @@ fun EditorScreen(vm: EditorViewModel) {
                     factory = { playerView },
                     modifier = Modifier.fillMaxSize(),
                 )
-                // Big central play/pause affordance.
                 Box(
                     modifier = Modifier
                         .size(64.dp)
@@ -170,6 +200,20 @@ fun EditorScreen(vm: EditorViewModel) {
                         modifier = Modifier.size(34.dp),
                     )
                 }
+                previewNote?.let {
+                    Text(
+                        it,
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(12.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xAA000000))
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                    )
+                }
             }
 
             // Scrubber
@@ -182,9 +226,10 @@ fun EditorScreen(vm: EditorViewModel) {
                 Text(formatMs(playheadMs), color = OnDim, fontSize = 12.sp)
                 Slider(
                     value = playheadMs.toFloat(),
-                    onValueChange = {
-                        playheadMs = it.toLong()
-                        player?.seekTo(it.toLong())
+                    onValueChange = { v ->
+                        playheadMs = v.toLong()
+                        val (idx, raw) = seekTargetFor(vm.project.clips, v.toLong())
+                        player?.seekTo(idx, raw)
                     },
                     valueRange = 0f..durationMs.toFloat().coerceAtLeast(1f),
                     colors = SliderDefaults.colors(
@@ -196,6 +241,14 @@ fun EditorScreen(vm: EditorViewModel) {
                 )
                 Text(formatMs(durationMs), color = OnDim, fontSize = 12.sp)
             }
+
+            Text(
+                "Filters, captions & speed are baked in when you export.",
+                color = OnDim,
+                fontSize = 11.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
+            )
 
             Timeline(
                 project = vm.project,
@@ -220,6 +273,59 @@ fun EditorScreen(vm: EditorViewModel) {
         }
     }
 }
+
+// ---- timeline <-> player time mapping -------------------------------------
+
+/** Build the raw preview item: video keeps its trim window; a photo gets a duration. */
+private fun previewMediaItem(clip: Clip): MediaItem {
+    val b = MediaItem.Builder().setUri(clip.uri)
+    if (clip.type == MediaType.VIDEO) {
+        b.setClippingConfiguration(
+            MediaItem.ClippingConfiguration.Builder()
+                .setStartPositionMs(clip.trimStartMs)
+                .setEndPositionMs(clip.trimEndMs)
+                .build()
+        )
+    } else {
+        b.setImageDurationMs(clip.imageDurationMs)
+    }
+    return b.build()
+}
+
+/** Convert (playlist index, raw offset within item) into overall timeline ms. */
+private fun timelinePosition(clips: List<Clip>, index: Int, rawWithinMs: Long): Long {
+    var acc = 0L
+    val bound = index.coerceIn(0, clips.size)
+    for (i in 0 until bound) acc += clips[i].timelineDurationMs
+    val cur = clips.getOrNull(index)
+    val within = if (cur != null && cur.type == MediaType.VIDEO && cur.speed != 1f) {
+        (rawWithinMs / cur.speed).toLong()
+    } else {
+        rawWithinMs
+    }
+    return acc + within
+}
+
+/** Convert an overall timeline ms into (playlist index, raw offset) for seeking. */
+private fun seekTargetFor(clips: List<Clip>, timelineMs: Long): Pair<Int, Long> {
+    var acc = 0L
+    for ((i, c) in clips.withIndex()) {
+        val d = c.timelineDurationMs
+        if (timelineMs < acc + d || i == clips.lastIndex) {
+            val within = (timelineMs - acc).coerceIn(0, d)
+            val raw = if (c.type == MediaType.VIDEO && c.speed != 1f) {
+                (within * c.speed).toLong()
+            } else {
+                within
+            }
+            return i to raw
+        }
+        acc += d
+    }
+    return 0 to 0L
+}
+
+// ---- chrome ---------------------------------------------------------------
 
 @Composable
 private fun TopBar(

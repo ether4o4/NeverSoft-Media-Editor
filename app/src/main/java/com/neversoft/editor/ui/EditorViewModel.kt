@@ -6,8 +6,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.media3.common.util.UnstableApi
 import com.neversoft.editor.engine.EditorExporter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.neversoft.editor.media.MediaUtils
 import com.neversoft.editor.model.Clip
 import com.neversoft.editor.model.Filter
@@ -36,6 +40,9 @@ class EditorViewModel : ViewModel() {
 
     var exportState by mutableStateOf<ExportState>(ExportState.Idle); private set
 
+    /** True while media metadata is being read off the main thread. */
+    var importing by mutableStateOf(false); private set
+
     private val undoStack = ArrayDeque<Project>()
     val canUndo: Boolean get() = undoStack.isNotEmpty()
 
@@ -47,20 +54,34 @@ class EditorViewModel : ViewModel() {
     // ---- import -----------------------------------------------------------
 
     fun importInitial(context: Context, uris: List<Uri>) {
-        if (uris.isEmpty()) return
-        val clips = uris.map { MediaUtils.clipFrom(context, it) }
-        val first = MediaUtils.probe(context, uris.first())
-        val (w, h) = MediaUtils.canvasFor(first.width, first.height)
-        mutate {
-            it.copy(clips = clips, outputWidth = w, outputHeight = h)
+        if (uris.isEmpty() || importing) return
+        val appCtx = context.applicationContext
+        importing = true
+        // Reading metadata for a long/large video can take a moment; never do it
+        // on the main thread or a big file makes the app look frozen (ANR).
+        viewModelScope.launch {
+            val clips = withContext(Dispatchers.IO) {
+                uris.map { MediaUtils.clipFrom(appCtx, it) }
+            }
+            val first = clips.firstOrNull()
+            val (w, h) = MediaUtils.canvasFor(first?.sourceWidth ?: 0, first?.sourceHeight ?: 0)
+            mutate { it.copy(clips = clips, outputWidth = w, outputHeight = h) }
+            selectedClipId = clips.firstOrNull()?.id
+            importing = false
         }
-        selectedClipId = clips.firstOrNull()?.id
     }
 
     fun addMore(context: Context, uris: List<Uri>) {
-        if (uris.isEmpty()) return
-        val clips = uris.map { MediaUtils.clipFrom(context, it) }
-        mutate { it.copy(clips = it.clips + clips) }
+        if (uris.isEmpty() || importing) return
+        val appCtx = context.applicationContext
+        importing = true
+        viewModelScope.launch {
+            val clips = withContext(Dispatchers.IO) {
+                uris.map { MediaUtils.clipFrom(appCtx, it) }
+            }
+            mutate { it.copy(clips = it.clips + clips) }
+            importing = false
+        }
     }
 
     // ---- selection & arrangement -----------------------------------------
@@ -115,6 +136,27 @@ class EditorViewModel : ViewModel() {
     fun setFilter(id: Long, filter: Filter) = editClip(id) { it.copy(filter = filter) }
 
     fun toggleMute(id: Long) = editClip(id) { it.copy(muted = !it.muted) }
+
+    fun toggleEnhance(id: Long) = editClip(id) { it.copy(autoEnhance = !it.autoEnhance) }
+
+    /** One tap to punch up every clip at once. */
+    fun enhanceAll() = mutate { p ->
+        p.copy(clips = p.clips.map { it.copy(autoEnhance = true) })
+    }
+
+    fun rotate(id: Long) = editClip(id) { it.copy(rotationDeg = (it.rotationDeg + 90) % 360) }
+
+    /** Auto-clip: keep a centred window of [targetMs] from a longer video. */
+    fun autoClip(id: Long, targetMs: Long) = editClip(id) { clip ->
+        if (clip.type != MediaType.VIDEO || clip.sourceDurationMs <= targetMs) return@editClip clip
+        val start = (clip.sourceDurationMs - targetMs) / 2
+        clip.copy(trimStartMs = start, trimEndMs = start + targetMs)
+    }
+
+    /** Set the output canvas (aspect ratio); clips letterbox to fit. */
+    fun setAspect(width: Int, height: Int) = mutate {
+        it.copy(outputWidth = width, outputHeight = height)
+    }
 
     fun addText(id: Long, text: String, position: TextPosition) = editClip(id) {
         if (text.isBlank()) return@editClip it

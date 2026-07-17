@@ -13,8 +13,12 @@ import androidx.media3.common.audio.ChannelMixingAudioProcessor
 import androidx.media3.common.audio.ChannelMixingMatrix
 import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.effect.Brightness
+import androidx.media3.effect.Contrast
+import androidx.media3.effect.HslAdjustment
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.Presentation
+import androidx.media3.effect.ScaleAndRotateTransformation
 import androidx.media3.effect.SpeedChangeEffect
 import androidx.media3.effect.StaticOverlaySettings
 import androidx.media3.effect.TextOverlay
@@ -30,10 +34,10 @@ import com.neversoft.editor.model.TextClip
 import com.neversoft.editor.model.TextPosition
 
 /**
- * Builds a Media3 [Composition] from a [Project]. The exact same composition is
- * used for the on-device preview ([androidx.media3.transformer.CompositionPlayer])
- * and for the final export ([androidx.media3.transformer.Transformer]) — so what
- * you see is precisely what you get.
+ * Builds a Media3 [Composition] from a [Project] for the final export via
+ * [androidx.media3.transformer.Transformer]. This is where filters, captions,
+ * speed and background music are rendered into the output file. (Live preview
+ * uses a plain ExoPlayer on the raw clips for maximum playback reliability.)
  */
 @UnstableApi
 object CompositionFactory {
@@ -105,7 +109,22 @@ object CompositionFactory {
             effects.add(SpeedChangeEffect(clip.speed))
         }
 
+        if (clip.rotationDeg % 360 != 0) {
+            effects.add(
+                ScaleAndRotateTransformation.Builder()
+                    .setRotationDegrees(clip.rotationDeg.toFloat())
+                    .build()
+            )
+        }
+
         effects.addAll(Filters.effectsFor(clip.filter))
+
+        // One-tap "Enhance": a tasteful punch-up layered on top of any filter.
+        if (clip.autoEnhance) {
+            effects.add(Brightness(0.06f))
+            effects.add(Contrast(0.14f))
+            effects.add(HslAdjustment.Builder().adjustSaturation(20f).build())
+        }
 
         // Normalise every clip to the project canvas so mixed orientations sit
         // on one consistent frame (letterboxed rather than stretched).
