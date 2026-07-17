@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -57,6 +58,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.neversoft.editor.ui.MusicExportState
 import com.neversoft.editor.ui.MusicViewModel
+import com.neversoft.editor.ui.StemState
 import com.neversoft.editor.ui.theme.Bg
 import com.neversoft.editor.ui.theme.Magenta
 import com.neversoft.editor.ui.theme.OnDim
@@ -249,6 +251,33 @@ fun MusicStudioScreen(vm: MusicViewModel, onBack: () -> Unit) {
                         color = OnDim,
                         fontSize = 12.sp,
                     )
+
+                    Spacer(Modifier.height(22.dp))
+                    Label("AI Tools")
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Surface2)
+                            .clickable { vm.separateStems(context) },
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Filled.GraphicEq, contentDescription = null, tint = Magenta)
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            "Split into Vocals + Instrumental",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Runs entirely on your phone. First use downloads a ~108 MB model. Experimental — quality varies by track.",
+                        color = OnDim,
+                        fontSize = 12.sp,
+                    )
                     Spacer(Modifier.height(20.dp))
                 }
             }
@@ -259,6 +288,18 @@ fun MusicStudioScreen(vm: MusicViewModel, onBack: () -> Unit) {
             is MusicExportState.Done -> Overlay { DoneCard { vm.dismissExport() } }
             is MusicExportState.Error -> Overlay { ErrorCard(s.message) { vm.dismissExport() } }
             MusicExportState.Idle -> {}
+        }
+
+        when (val st = vm.stemState) {
+            is StemState.Downloading -> Overlay {
+                StemProgress("Downloading model", st.percent, "One-time · ~108 MB · stays on your phone")
+            }
+            is StemState.Working -> Overlay {
+                StemProgress(st.label, st.percent, "Processing on-device — this can take a bit")
+            }
+            is StemState.Done -> Overlay { StemDone { vm.dismissStems() } }
+            is StemState.Error -> Overlay { ErrorCard(st.message) { vm.dismissStems() } }
+            StemState.Idle -> {}
         }
 
         if (vm.importing) {
@@ -355,6 +396,39 @@ private fun DoneCard(onDismiss: () -> Unit) {
         Text("Saved to your music", color = Color.White, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(4.dp))
         Text("Music › NeverSoft", color = OnDim, fontSize = 12.sp)
+        Spacer(Modifier.height(18.dp))
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(14.dp))
+                .background(Brush.linearGradient(listOf(Violet, Magenta)))
+                .clickable(onClick = onDismiss)
+                .padding(horizontal = 24.dp, vertical = 10.dp),
+        ) { Text("Done", color = Color.White, fontWeight = FontWeight.Bold) }
+    }
+}
+
+@Composable
+private fun StemProgress(title: String, percent: Int, note: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(250.dp),
+    ) {
+        CircularProgressIndicator(color = Magenta)
+        Spacer(Modifier.height(16.dp))
+        Text("$title… $percent%", color = Color.White, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(4.dp))
+        Text(note, color = OnDim, fontSize = 12.sp, textAlign = TextAlign.Center)
+    }
+}
+
+@Composable
+private fun StemDone(onDismiss: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text("✓", color = Success, fontSize = 40.sp, fontWeight = FontWeight.Black)
+        Spacer(Modifier.height(8.dp))
+        Text("Vocals + Instrumental saved", color = Color.White, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(4.dp))
+        Text("Music › NeverSoft (WAV)", color = OnDim, fontSize = 12.sp)
         Spacer(Modifier.height(18.dp))
         Box(
             modifier = Modifier

@@ -10,6 +10,10 @@
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
 
+    <!-- One-time download of the on-device stem-separation model. All audio
+         processing runs locally; only the model file is fetched over the network. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:name=".NeverSoftApp"
         android:allowBackup="true"

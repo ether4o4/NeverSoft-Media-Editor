@@ -39,6 +39,24 @@ A small dedicated audio editor (from the home screen):
 - **Re-tag** — save a new **title / artist / album**.
 - Saves a fresh `.m4a` into **Music › NeverSoft**; the new tags register in the
   device music library (`MediaStore.Audio`).
+
+### Stem separation — on-device, experimental
+
+Split a song into **Vocals + Instrumental**, entirely on the phone:
+
+- Powered by **Open-Unmix (UMX-L)** exported to ONNX, run via **ONNX Runtime**.
+  The vocals model (~108 MB, MIT) is downloaded once by the app's model manager;
+  after that, **all processing is local** — nothing is uploaded.
+- Pipeline (`dsp/` + `engine/StemSeparator.kt`): decode → STFT (n_fft 4096,
+  hop 1024) → run the model on the magnitude spectrogram → soft-mask → the
+  complement is the instrumental → iSTFT. Processed in ~20 s chunks to bound
+  memory. Outputs two WAVs into Music › NeverSoft.
+- **Experimental:** the STFT/iSTFT is matched to `torch.stft` but not yet
+  device-verified, and separation is a single-model 2-stem approximation, so
+  quality varies by track. 4-stem (drums/bass/other) is a natural next step.
+
+Model: [`chinedudave06/demucs-onnx`](https://hf.co/chinedudave06/demucs-onnx)
+(Open-Unmix UMX-L, MIT).
 - **Export** to MP4 and save straight to the gallery (Movies › NeverSoft), with
   a live progress readout.
 
