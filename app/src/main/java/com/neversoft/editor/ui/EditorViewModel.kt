@@ -137,6 +137,27 @@ class EditorViewModel : ViewModel() {
 
     fun toggleMute(id: Long) = editClip(id) { it.copy(muted = !it.muted) }
 
+    fun toggleEnhance(id: Long) = editClip(id) { it.copy(autoEnhance = !it.autoEnhance) }
+
+    /** One tap to punch up every clip at once. */
+    fun enhanceAll() = mutate { p ->
+        p.copy(clips = p.clips.map { it.copy(autoEnhance = true) })
+    }
+
+    fun rotate(id: Long) = editClip(id) { it.copy(rotationDeg = (it.rotationDeg + 90) % 360) }
+
+    /** Auto-clip: keep a centred window of [targetMs] from a longer video. */
+    fun autoClip(id: Long, targetMs: Long) = editClip(id) { clip ->
+        if (clip.type != MediaType.VIDEO || clip.sourceDurationMs <= targetMs) return@editClip clip
+        val start = (clip.sourceDurationMs - targetMs) / 2
+        clip.copy(trimStartMs = start, trimEndMs = start + targetMs)
+    }
+
+    /** Set the output canvas (aspect ratio); clips letterbox to fit. */
+    fun setAspect(width: Int, height: Int) = mutate {
+        it.copy(outputWidth = width, outputHeight = height)
+    }
+
     fun addText(id: Long, text: String, position: TextPosition) = editClip(id) {
         if (text.isBlank()) return@editClip it
         it.copy(texts = it.texts + TextClip(MediaUtils.nextId(), text.trim(), position))

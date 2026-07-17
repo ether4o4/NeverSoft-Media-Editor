@@ -20,12 +20,25 @@ export, and only for what you actually keep.
 - **Timeline** with real thumbnails (decoded video frames), sized by duration.
 - **Trim** video with a range slider; set **photo duration** with a slider.
 - **Split** the selected clip at the playhead.
+- **Auto-Enhance** — one-tap punch-up (brightness + contrast + saturation); "Enhance all" too.
+- **Auto-Clip** — trim a long video down to a centred 10/15/30/60-second window.
+- **Rotate** 90° and set the **aspect ratio** (9:16 / 1:1 / 16:9), clips letterboxed to fit.
 - **Speed** from 0.25× (slow-mo) to 4× (fast-forward), audio kept in sync.
 - **Filters** — Vivid, Warm, Cool, Mono, Fade — pure GL colour math, no LUT files.
 - **Captions** anchored top / centre / bottom, burned per clip.
 - **Background music** with a volume slider.
 - **Mute**, **duplicate**, **reorder**, **delete** clips.
 - **Undo** every edit.
+
+### Music Studio
+
+A small dedicated audio editor (from the home screen):
+
+- **Crop** a song's length with a range slider, with live preview.
+- **Volume** (0–200%) and **speed** (0.5×–2×).
+- **Re-tag** — save a new **title / artist / album**.
+- Saves a fresh `.m4a` into **Music › NeverSoft**; the new tags register in the
+  device music library (`MediaStore.Audio`).
 - **Export** to MP4 and save straight to the gallery (Movies › NeverSoft), with
   a live progress readout.
 

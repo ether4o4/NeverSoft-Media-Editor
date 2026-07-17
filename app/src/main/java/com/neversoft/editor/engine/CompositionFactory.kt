@@ -13,8 +13,12 @@ import androidx.media3.common.audio.ChannelMixingAudioProcessor
 import androidx.media3.common.audio.ChannelMixingMatrix
 import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.effect.Brightness
+import androidx.media3.effect.Contrast
+import androidx.media3.effect.HslAdjustment
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.Presentation
+import androidx.media3.effect.ScaleAndRotateTransformation
 import androidx.media3.effect.SpeedChangeEffect
 import androidx.media3.effect.StaticOverlaySettings
 import androidx.media3.effect.TextOverlay
@@ -105,7 +109,22 @@ object CompositionFactory {
             effects.add(SpeedChangeEffect(clip.speed))
         }
 
+        if (clip.rotationDeg % 360 != 0) {
+            effects.add(
+                ScaleAndRotateTransformation.Builder()
+                    .setRotationDegrees(clip.rotationDeg.toFloat())
+                    .build()
+            )
+        }
+
         effects.addAll(Filters.effectsFor(clip.filter))
+
+        // One-tap "Enhance": a tasteful punch-up layered on top of any filter.
+        if (clip.autoEnhance) {
+            effects.add(Brightness(0.06f))
+            effects.add(Contrast(0.14f))
+            effects.add(HslAdjustment.Builder().adjustSaturation(20f).build())
+        }
 
         // Normalise every clip to the project canvas so mixed orientations sit
         // on one consistent frame (letterboxed rather than stretched).

@@ -18,6 +18,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AspectRatio
+import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContentCopy
@@ -25,6 +28,7 @@ import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Rotate90DegreesCw
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Tune
@@ -63,7 +67,7 @@ import com.neversoft.editor.ui.theme.Surface1
 import com.neversoft.editor.ui.theme.Surface2
 import com.neversoft.editor.ui.theme.Violet
 
-private enum class Tool { TRIM, SPEED, FILTER, TEXT, MUSIC }
+private enum class Tool { TRIM, SPEED, FILTER, TEXT, MUSIC, AUTOCLIP, ASPECT }
 
 @UnstableApi
 @Composable
@@ -94,6 +98,8 @@ fun EditorTools(vm: EditorViewModel, playheadMs: Long) {
                     Tool.FILTER -> FilterPanel(vm, clip)
                     Tool.TEXT -> TextPanel(vm, clip)
                     Tool.MUSIC -> MusicPanel(vm) { musicPicker.launch("audio/*") }
+                    Tool.AUTOCLIP -> AutoClipPanel(vm, clip)
+                    Tool.ASPECT -> AspectPanel(vm)
                     null -> {}
                 }
             }
@@ -119,6 +125,18 @@ fun EditorTools(vm: EditorViewModel, playheadMs: Long) {
             }
             ToolButton(Icons.Filled.Tune, "Filter", active == Tool.FILTER, id != null) {
                 active = if (active == Tool.FILTER) null else Tool.FILTER
+            }
+            ToolButton(Icons.Filled.AutoFixHigh, "Enhance", clip?.autoEnhance == true, id != null) {
+                id?.let { vm.toggleEnhance(it) }
+            }
+            ToolButton(Icons.Filled.Bolt, "Auto-clip", active == Tool.AUTOCLIP, id != null) {
+                active = if (active == Tool.AUTOCLIP) null else Tool.AUTOCLIP
+            }
+            ToolButton(Icons.Filled.Rotate90DegreesCw, "Rotate", false, id != null) {
+                id?.let { vm.rotate(it) }
+            }
+            ToolButton(Icons.Filled.AspectRatio, "Aspect", active == Tool.ASPECT, true) {
+                active = if (active == Tool.ASPECT) null else Tool.ASPECT
             }
             ToolButton(Icons.Filled.TextFields, "Text", active == Tool.TEXT, id != null) {
                 active = if (active == Tool.TEXT) null else Tool.TEXT
@@ -373,6 +391,61 @@ private fun MusicPanel(vm: EditorViewModel, onPick: () -> Unit) {
                 ) { Text("Remove", color = Magenta) }
             }
         }
+    }
+}
+
+@Composable
+private fun AutoClipPanel(vm: EditorViewModel, clip: Clip?) {
+    if (clip == null) return
+    Column {
+        PanelTitle("Auto-clip — keep the best bit")
+        if (clip.type != MediaType.VIDEO) {
+            Text("Auto-clip works on video clips.", color = OnDim, fontSize = 12.sp)
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(10, 15, 30, 60).forEach { sec ->
+                    FilterChip(
+                        selected = false,
+                        onClick = { vm.autoClip(clip.id, sec * 1000L) },
+                        label = { Text("${sec}s") },
+                    )
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Trims a long clip to a centred window of that length — the middle is usually the good part.",
+                color = OnDim,
+                fontSize = 12.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AspectPanel(vm: EditorViewModel) {
+    val w = vm.project.outputWidth
+    val h = vm.project.outputHeight
+    Column {
+        PanelTitle("Aspect ratio")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = w == 720 && h == 1280,
+                onClick = { vm.setAspect(720, 1280) },
+                label = { Text("9:16") },
+            )
+            FilterChip(
+                selected = w == h,
+                onClick = { vm.setAspect(1080, 1080) },
+                label = { Text("1:1") },
+            )
+            FilterChip(
+                selected = w == 1280 && h == 720,
+                onClick = { vm.setAspect(1280, 720) },
+                label = { Text("16:9") },
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text("Clips fit inside the frame (letterboxed), never stretched.", color = OnDim, fontSize = 12.sp)
     }
 }
 

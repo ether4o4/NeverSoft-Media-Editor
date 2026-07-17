@@ -93,6 +93,32 @@ object MediaUtils {
         }.getOrNull() ?: "Audio"
     }
 
+    data class SongInfo(
+        val durationMs: Long,
+        val title: String,
+        val artist: String,
+        val album: String,
+    )
+
+    /** Read an audio file's duration and existing tags (to prefill the studio). */
+    fun probeSong(context: Context, uri: Uri): SongInfo {
+        val r = MediaMetadataRetriever()
+        return try {
+            r.setDataSource(context, uri)
+            val dur = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                ?.toLongOrNull() ?: 0L
+            val title = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+                ?.takeIf { it.isNotBlank() } ?: displayName(context, uri).substringBeforeLast('.')
+            val artist = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST).orEmpty()
+            val album = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM).orEmpty()
+            SongInfo(dur, title, artist, album)
+        } catch (e: Exception) {
+            SongInfo(0L, displayName(context, uri).substringBeforeLast('.'), "", "")
+        } finally {
+            runCatching { r.release() }
+        }
+    }
+
     /** Pick a good output canvas from the first video/photo's orientation. */
     fun canvasFor(width: Int, height: Int): Pair<Int, Int> {
         if (width <= 0 || height <= 0) return 720 to 1280

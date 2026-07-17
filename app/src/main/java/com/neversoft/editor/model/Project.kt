@@ -51,6 +51,8 @@ data class Clip(
     val speed: Float = 1f,                // video playback speed multiplier
     val filter: Filter = Filter.NONE,
     val muted: Boolean = false,
+    val autoEnhance: Boolean = false,     // one-tap punch-up (brightness/contrast/pop)
+    val rotationDeg: Int = 0,             // 0 / 90 / 180 / 270
     val texts: List<TextClip> = emptyList(),
 ) {
     /** Length this clip occupies on the timeline, after trim + speed. */
