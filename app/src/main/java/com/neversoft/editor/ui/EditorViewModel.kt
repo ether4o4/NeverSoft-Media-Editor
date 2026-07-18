@@ -158,6 +158,35 @@ class EditorViewModel : ViewModel() {
         it.copy(outputWidth = width, outputHeight = height)
     }
 
+    /**
+     * Replace a video clip with one segment per typed time range. Returns the
+     * number of segments created (0 if nothing valid was parsed).
+     */
+    fun applyCutList(id: Long, text: String): Int {
+        val clip = project.clips.firstOrNull { it.id == id } ?: return 0
+        if (clip.type != MediaType.VIDEO) return 0
+        val result = com.neversoft.editor.model.TimecodeCutList.parse(text, clip.sourceDurationMs)
+        if (result.ranges.isEmpty()) return 0
+        mutate { p ->
+            val idx = p.clips.indexOfFirst { it.id == id }
+            if (idx < 0) return@mutate p
+            val segments = result.ranges.map { r ->
+                clip.copy(
+                    id = MediaUtils.nextId(),
+                    trimStartMs = r.startMs,
+                    trimEndMs = r.endMs,
+                    texts = emptyList(),
+                )
+            }
+            val list = p.clips.toMutableList()
+            list.removeAt(idx)
+            list.addAll(idx, segments)
+            selectedClipId = segments.first().id
+            p.copy(clips = list)
+        }
+        return result.ranges.size
+    }
+
     fun addText(id: Long, text: String, position: TextPosition) = editClip(id) {
         if (text.isBlank()) return@editClip it
         it.copy(texts = it.texts + TextClip(MediaUtils.nextId(), text.trim(), position))

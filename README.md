@@ -22,6 +22,9 @@ export, and only for what you actually keep.
 - **Split** the selected clip at the playhead.
 - **Auto-Enhance** — one-tap punch-up (brightness + contrast + saturation); "Enhance all" too.
 - **Auto-Clip** — trim a long video down to a centred 10/15/30/60-second window.
+- **Cut list** — type exact time ranges (`14.23-14.30, 15.50-16.00, 17.09-17.20`)
+  and each becomes its own clip on the timeline. Perfect for pulling several
+  highlights out of a long recording in one go.
 - **Rotate** 90° and set the **aspect ratio** (9:16 / 1:1 / 16:9), clips letterboxed to fit.
 - **Speed** from 0.25× (slow-mo) to 4× (fast-forward), audio kept in sync.
 - **Filters** — Vivid, Warm, Cool, Mono, Fade — pure GL colour math, no LUT files.
