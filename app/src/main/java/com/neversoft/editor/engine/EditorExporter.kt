@@ -35,6 +35,19 @@ class EditorExporter(private val context: Context) {
     private var polling: Runnable? = null
 
     fun start(project: Project, callbacks: Callbacks) {
+        // Any synchronous failure here (composition build, decoder/encoder init)
+        // must surface as an error, never crash the app and lose the user's edits.
+        try {
+            startInternal(project, callbacks)
+        } catch (t: Throwable) {
+            stopPolling()
+            runCatching { transformer?.cancel() }
+            transformer = null
+            callbacks.onError(t.message ?: "Export couldn't start on this device")
+        }
+    }
+
+    private fun startInternal(project: Project, callbacks: Callbacks) {
         val composition: Composition = CompositionFactory.build(project)
         val output = File(context.cacheDir, "nsme_export_${System.currentTimeMillis()}.mp4")
 

@@ -54,6 +54,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.neversoft.editor.engine.ProjectStore
 import com.neversoft.editor.model.Clip
 import com.neversoft.editor.model.MediaType
 import com.neversoft.editor.ui.EditorViewModel
@@ -86,14 +87,29 @@ fun EditorScreen(vm: EditorViewModel) {
     var isPlaying by remember { mutableStateOf(false) }
     var durationMs by remember { mutableStateOf(0L) }
     var previewNote by remember { mutableStateOf<String?>(null) }
+    // Bumped to force the preview player to be rebuilt (e.g. after we release it
+    // for an export so the exporter has the video codec to itself).
+    var previewEpoch by remember { mutableStateOf(0) }
 
     val addMore = rememberLauncherForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia()
     ) { uris -> vm.addMore(context, uris) }
 
+    // Autosave on every edit so a crash or the app being killed never loses work.
+    LaunchedEffect(vm.previewVersion) {
+        ProjectStore.save(context, vm.project)
+    }
+
+    // Rebuild the preview once an export finishes and the player was released.
+    LaunchedEffect(vm.exportState) {
+        if (vm.exportState is ExportState.Idle && player == null && !vm.project.isEmpty) {
+            previewEpoch++
+        }
+    }
+
     // (Re)build the playlist after edits settle (debounced so dragging a trim
     // handle doesn't thrash the player).
-    LaunchedEffect(vm.previewVersion) {
+    LaunchedEffect(vm.previewVersion, previewEpoch) {
         delay(180)
         previewNote = null
         val exo = player ?: ExoPlayer.Builder(context).build().also { p ->
@@ -157,10 +173,16 @@ fun EditorScreen(vm: EditorViewModel) {
         ) {
             TopBar(
                 canUndo = vm.canUndo,
-                onClose = { vm.reset() },
+                onClose = { ProjectStore.clear(context); vm.reset() },
                 onUndo = { vm.undo() },
                 onExport = {
-                    player?.pause(); isPlaying = false
+                    // Release the preview player first so the exporter has the
+                    // device's video codec to itself (avoids codec-exhaustion
+                    // crashes when a clip is split into many segments).
+                    isPlaying = false
+                    playerView.player = null
+                    player?.release()
+                    player = null
                     vm.export(context)
                 },
             )

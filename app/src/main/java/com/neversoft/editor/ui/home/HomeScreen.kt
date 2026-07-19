@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -49,6 +50,7 @@ import com.neversoft.editor.ui.theme.Violet
 @Composable
 fun HomeScreen(vm: EditorViewModel, onOpenMusic: () -> Unit) {
     val context = LocalContext.current
+    val resumable = remember { com.neversoft.editor.engine.ProjectStore.load(context) }
 
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia()
@@ -123,6 +125,29 @@ fun HomeScreen(vm: EditorViewModel, onOpenMusic: () -> Unit) {
             fontSize = 13.sp,
             textAlign = TextAlign.Center,
         )
+
+        if (resumable != null && !resumable.isEmpty) {
+            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Surface1)
+                    .clickable { vm.restore(resumable) },
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.Restore, contentDescription = null, tint = Violet)
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    "Resume last project (${resumable.clips.size} clips)",
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
 
         Spacer(Modifier.height(16.dp))
         // Secondary entry: the Music Studio.

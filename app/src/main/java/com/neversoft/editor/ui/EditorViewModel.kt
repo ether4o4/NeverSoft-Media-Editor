@@ -296,6 +296,16 @@ class EditorViewModel : ViewModel() {
         exportState = ExportState.Idle
     }
 
+    /** Restore a previously autosaved project. */
+    fun restore(restored: Project) {
+        if (restored.isEmpty) return
+        undoStack.clear()
+        project = restored
+        selectedClipId = restored.clips.firstOrNull()?.id
+        exportState = ExportState.Idle
+        previewVersion++
+    }
+
     /** Clear everything and return to the start screen. */
     fun reset() {
         exporter?.cancel()
