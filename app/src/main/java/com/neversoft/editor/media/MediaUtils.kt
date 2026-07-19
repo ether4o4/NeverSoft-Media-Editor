@@ -17,6 +17,11 @@ object MediaUtils {
     private var idSeed = 1L
     fun nextId(): Long = idSeed++
 
+    /** Ensure future ids won't collide with ids restored from disk. */
+    fun ensureIdAbove(maxId: Long) {
+        if (maxId >= idSeed) idSeed = maxId + 1
+    }
+
     data class Probe(
         val type: MediaType,
         val durationMs: Long,

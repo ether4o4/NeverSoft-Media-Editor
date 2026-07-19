@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Rotate90DegreesCw
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Tune
@@ -67,7 +68,7 @@ import com.neversoft.editor.ui.theme.Surface1
 import com.neversoft.editor.ui.theme.Surface2
 import com.neversoft.editor.ui.theme.Violet
 
-private enum class Tool { TRIM, SPEED, FILTER, TEXT, MUSIC, AUTOCLIP, ASPECT }
+private enum class Tool { TRIM, SPEED, FILTER, TEXT, MUSIC, AUTOCLIP, ASPECT, CUTLIST }
 
 @UnstableApi
 @Composable
@@ -100,6 +101,7 @@ fun EditorTools(vm: EditorViewModel, playheadMs: Long) {
                     Tool.MUSIC -> MusicPanel(vm) { musicPicker.launch("audio/*") }
                     Tool.AUTOCLIP -> AutoClipPanel(vm, clip)
                     Tool.ASPECT -> AspectPanel(vm)
+                    Tool.CUTLIST -> CutListPanel(vm, clip)
                     null -> {}
                 }
             }
@@ -131,6 +133,12 @@ fun EditorTools(vm: EditorViewModel, playheadMs: Long) {
             }
             ToolButton(Icons.Filled.Bolt, "Auto-clip", active == Tool.AUTOCLIP, id != null) {
                 active = if (active == Tool.AUTOCLIP) null else Tool.AUTOCLIP
+            }
+            ToolButton(
+                Icons.Filled.Schedule, "Cut list", active == Tool.CUTLIST,
+                id != null && clip?.type == MediaType.VIDEO,
+            ) {
+                active = if (active == Tool.CUTLIST) null else Tool.CUTLIST
             }
             ToolButton(Icons.Filled.Rotate90DegreesCw, "Rotate", false, id != null) {
                 id?.let { vm.rotate(it) }
@@ -446,6 +454,61 @@ private fun AspectPanel(vm: EditorViewModel) {
         }
         Spacer(Modifier.height(6.dp))
         Text("Clips fit inside the frame (letterboxed), never stretched.", color = OnDim, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun CutListPanel(vm: EditorViewModel, clip: Clip?) {
+    if (clip == null) return
+    var text by remember { mutableStateOf("") }
+    Column {
+        PanelTitle("Cut list — clip exact time ranges")
+        if (clip.type != MediaType.VIDEO) {
+            Text("Works on video clips.", color = OnDim, fontSize = 12.sp)
+        } else {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                placeholder = { Text("14.23-14.30, 15.50-16.00, 17.09-17.20") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2,
+            )
+            val res = remember(text, clip.sourceDurationMs) {
+                com.neversoft.editor.model.TimecodeCutList.parse(text, clip.sourceDurationMs)
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                buildString {
+                    append("${res.ranges.size} clip(s) recognised")
+                    if (res.invalid > 0) append(" · ${res.invalid} not understood")
+                },
+                color = OnDim,
+                fontSize = 12.sp,
+            )
+            Text(
+                "Format: minutes.seconds (14.23 = 14 min 23 s). Separate ranges with commas or new lines.",
+                color = OnDim,
+                fontSize = 12.sp,
+            )
+            Spacer(Modifier.height(8.dp))
+            val enabled = res.ranges.isNotEmpty()
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (enabled) Magenta else Stroke)
+                    .clickable(enabled = enabled) {
+                        vm.applyCutList(clip.id, text)
+                        text = ""
+                    }
+                    .padding(horizontal = 18.dp, vertical = 12.dp),
+            ) {
+                Text(
+                    if (enabled) "Create ${res.ranges.size} clip(s)" else "Enter time ranges",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
     }
 }
 

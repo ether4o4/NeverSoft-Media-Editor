@@ -82,5 +82,8 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("io.coil-kt:coil-video:2.6.0")
 
+    // On-device AI stem separation (Open-Unmix UMX-L, ONNX).
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

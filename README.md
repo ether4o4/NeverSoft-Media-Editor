@@ -22,6 +22,9 @@ export, and only for what you actually keep.
 - **Split** the selected clip at the playhead.
 - **Auto-Enhance** — one-tap punch-up (brightness + contrast + saturation); "Enhance all" too.
 - **Auto-Clip** — trim a long video down to a centred 10/15/30/60-second window.
+- **Cut list** — type exact time ranges (`14.23-14.30, 15.50-16.00, 17.09-17.20`)
+  and each becomes its own clip on the timeline. Perfect for pulling several
+  highlights out of a long recording in one go.
 - **Rotate** 90° and set the **aspect ratio** (9:16 / 1:1 / 16:9), clips letterboxed to fit.
 - **Speed** from 0.25× (slow-mo) to 4× (fast-forward), audio kept in sync.
 - **Filters** — Vivid, Warm, Cool, Mono, Fade — pure GL colour math, no LUT files.
@@ -39,6 +42,24 @@ A small dedicated audio editor (from the home screen):
 - **Re-tag** — save a new **title / artist / album**.
 - Saves a fresh `.m4a` into **Music › NeverSoft**; the new tags register in the
   device music library (`MediaStore.Audio`).
+
+### Stem separation — on-device, experimental
+
+Split a song into **Vocals + Instrumental**, entirely on the phone:
+
+- Powered by **Open-Unmix (UMX-L)** exported to ONNX, run via **ONNX Runtime**.
+  The vocals model (~108 MB, MIT) is downloaded once by the app's model manager;
+  after that, **all processing is local** — nothing is uploaded.
+- Pipeline (`dsp/` + `engine/StemSeparator.kt`): decode → STFT (n_fft 4096,
+  hop 1024) → run the model on the magnitude spectrogram → soft-mask → the
+  complement is the instrumental → iSTFT. Processed in ~20 s chunks to bound
+  memory. Outputs two WAVs into Music › NeverSoft.
+- **Experimental:** the STFT/iSTFT is matched to `torch.stft` but not yet
+  device-verified, and separation is a single-model 2-stem approximation, so
+  quality varies by track. 4-stem (drums/bass/other) is a natural next step.
+
+Model: [`chinedudave06/demucs-onnx`](https://hf.co/chinedudave06/demucs-onnx)
+(Open-Unmix UMX-L, MIT).
 - **Export** to MP4 and save straight to the gallery (Movies › NeverSoft), with
   a live progress readout.
 
